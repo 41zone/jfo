@@ -1,0 +1,305 @@
+/**
+ * JFO Remote Framework，Some question for email 'jimmy.song@aliyun.com'
+ * Declare: This framework of Javascript developed by 41zone team
+ * License: MIT
+ */
+(function(opts) {
+	var jfoRemote = function() {
+		this.settings = {
+			begin : function() {
+			},
+			success : function() {
+			},
+			error : function() {
+			},
+			scripts : [],
+			styles : [],
+			custom : {},
+			ready:false
+		};
+		this.ajax = {
+			url : '',
+			method : 'GET',
+			type : 'text',
+			cache : false,
+			async : true,
+			params : {},
+			success : function(data, xhr) {
+			},
+			error : function(status, xhr) {
+			}
+		};
+		this.httpRequest = false;
+		this.scripts = {
+			len : 0,
+			list : [],
+			loaded : 0,
+			done:false
+		};
+		this.styles = {
+			len : 0,
+			list : [],
+			loaded : 0
+		};
+		this.oid = "JFO_REMOTE_" + Math.floor(Math.random() * 100000)+"_"+new Date().getTime();
+		this.div = null;
+		this.params = {};
+		this.query = {};
+		this.src = '';
+	};
+	var isIE = typeof document.all !== "undefined";
+	jfoRemote.prototype = {
+		/**
+		 * 初始化
+		 */
+		init : function() {
+			this.div = document.getElementById(this.oid);
+			if (typeof this.div === 'undefined' || this.div === null) {
+				this.div = document.createElement('div');
+				this.div.id = this.oid;
+				document.body.appendChild(this.div);
+			}
+			this.div = document.getElementById(this.oid);
+			this._readParams();
+		},
+		_lock:function(){
+			var scripts = document.getElementsByTagName("script");
+			script = scripts[scripts.length - 1];
+			this.src = script.src;
+		},
+		/**
+		 * 读取传递的配置
+		 */
+		_readParams : function() {
+			this.params = this.doQuery(this.src);
+			this.query = this.doQuery(window.location.search);
+		},
+		/**
+		 * 标准参数查询 
+		 */
+		doQuery:function(src){
+			if(!src) {return {};}
+			var reg = /(?:\?|&)(.*?)=(.*?)(?=&|$)/g;
+			var temp, ps = {};
+			while ((temp = reg.exec(src)) != null) {
+				ps[temp[1]] = decodeURIComponent(temp[2]);
+			}
+			return ps;
+		},
+		/**
+		 * 属性继承，进行深度复制重写，当前对象只支持原子模型对象
+		 * 
+		 * @param o
+		 *            原始属性
+		 * @param n
+		 *            最新属性
+		 */
+		overwrite : function(o, n) {
+			if (typeof o !== 'object' || typeof n !== 'object') {
+				return o;
+			}
+			for ( var k in n) {
+				if (typeof o[k] !== 'undefined' && typeof n[k] === typeof o[k]) {
+					if (typeof o[k] === 'object' && !(o[k] instanceof Array)) {
+						this.overwrite(o[k], n[k]);
+					} else {
+						o[k] = n[k];
+					}
+				} else {
+					o[k] = n[k];
+				}
+			}
+			return o;
+		},
+		/**
+		 * 快捷操作，加载过程：样式 -> 脚本加载
+		 * 
+		 * @param opts
+		 *            参数
+		 */
+		oneStep : function(opts) {
+			var _this = this;
+			this.init();
+			this.overwrite(this.settings, opts);
+			this.settings.begin(this);
+			this.loadStyle(function() {
+				_this.loadScript(function() {
+					_this.settings.success(_this);
+				}, _this.settings.scripts);
+			}, this.settings.styles);
+		},
+		/**
+		 * 是否存在脚本
+		 * 
+		 * @param script
+		 *            脚本
+		 * @returns 是否存在脚本
+		 */
+		existScript : function(script) {
+			var list = this.scripts.list;
+			for ( var i = 0; i < list.length; i++) {
+				if (list[i] == script) {
+					return true;
+				}
+			}
+			return false;
+		},
+		/**
+		 * 是否存在样式
+		 * 
+		 * @param style
+		 *            样式
+		 * @returns 是否存在样式
+		 */
+		existStyle : function(style) {
+			var list = this.styles.list;
+			for ( var i = 0; i < list.length; i++) {
+				if (list[i] == style) {
+					return true;
+				}
+			}
+			return false;
+		},
+		/**
+		 * 安装加载事件
+		 * 
+		 * @param obj
+		 *            事件源
+		 * @param data
+		 *            事件所涉猎数据
+		 * @param success
+		 *            成功加载后的回调函数
+		 */
+		installLoadEvent : function(obj, data, success) {
+			var _this = this;
+			if (isIE) {
+				obj.attachEvent("onreadystatechange",
+						function() {
+							if (obj.readyState == 'loaded'
+									|| obj.readyState == 'complete') {
+								data.loaded++;
+								if (data.loaded >= data.len && !data.done) {
+									success(_this);
+								}
+								obj.detachEvent("onreadystatechange",
+										arguments.callee);
+							}
+						});
+			} else {
+				obj.addEventListener("load", function() {
+					data.loaded++;
+					if (data.loaded >= data.len && !data.done) {
+						data.done = true;
+						success(_this);
+					}
+					obj.removeEventListener("load", arguments.call, false);
+				}, false);
+			}
+		},
+		/**
+		 * 加载脚本
+		 * 
+		 * @param success
+		 *            所有脚本全部加载成功后回调函数
+		 * @param args
+		 *            脚本数组
+		 */
+		loadScript : function(success, args) {
+			if (args.length <= 0) {
+				this.scripts.done = true;
+				success(this);
+				return ;
+			}
+			this.scripts.len = args.length;
+			for ( var i = 0; i < args.length; i++) {
+				if (this.existScript(args[i])) {
+					continue;
+				}
+				var item = args[i];
+				var script = document.createElement("script");
+				script.type = "text/javascript";
+				if (typeof item === 'string') {
+					script.src = encodeURI(item);
+				} else if (typeof item === 'object'
+						&& typeof item['url'] !== 'undefined') {
+					if (typeof item['conflict'] !== 'undefined'
+							|| item['conflict'] !== null) {
+						var force = item['force'];
+						if (typeof window[item['conflict']] !== 'undefined') {
+							this.scripts.len--;
+							if(!force) {
+								try {
+									console.log('The page exist object conflict script about "'+ item['conflict'] + '"');
+								} catch(e){}
+								continue;
+							}
+						}
+					}
+					script.src = encodeURI(item.url);
+				} else {
+					script = null;
+					this.scripts.len--;
+					continue;
+				}
+				this.div.appendChild(script);
+				this.scripts.list.push(script);
+				this.installLoadEvent(script, this.scripts, success);
+			}
+			if (this.scripts.len <= 0) {
+				this.scripts.done = true;
+				success(this);
+				return ;
+			}
+		},
+		/**
+		 * 加载样式
+		 * 
+		 * @param success
+		 *            所有样式全部加载成功后回调函数
+		 * @param args
+		 *            样式数组
+		 */
+		loadStyle : function(success, args) {
+			if (args.length <= 0) {
+				success(this);
+				return ;
+			}
+			this.styles.len = args.length;
+			for ( var i = 0; i < args.length; i++) {
+				if (this.existStyle(args[i])) {
+					continue;
+				}
+				var style = document.createElement("link");
+				style.type = "text/css";
+				style.rel = "stylesheet";
+				style.href = args[i];
+				this.div.appendChild(style);
+				this.styles.list.push(style);
+				this.installLoadEvent(style, this.styles, success);
+			}
+		}
+	};
+	var n = new jfoRemote();
+	n._lock();
+	if(opts.ready){
+		var fn = (function(n,opts){return function(){
+			n.oneStep(opts);
+		};})(n,opts);
+		if(window.attachEvent) window.attachEvent('onload',fn);
+		else window.addEventListener('load',fn,false);	
+	} else {
+		n.oneStep(opts);
+	}
+})
+({
+	begin:function(remote){
+	},
+	success:function(remote) {
+		console.log(remote.query.name+" = "+remote.params.name);
+		$('body').css('backgroundColor','black').css('color','white');
+		$('body').append('hi, I\'m '+remote.params.name+", everyone take me to somewhere for building tower high and strong.");
+	},
+	scripts:[{url:'http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js',conflict:'$',force:true}],
+	styles:[],
+	ready:true
+});
