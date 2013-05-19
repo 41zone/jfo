@@ -12,7 +12,7 @@
 		$('body').css('backgroundColor','black').css('color','white');
 		$('body').append('hi, I\'m '+remote.params.name+", everyone take me to somewhere for building tower high and strong.");
 	},
-	scripts:[{url:'http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js',conflict:'$',force:true}],
+	scripts:[{url:'http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js',conflict:'$',force:false}],
 	styles:[],
 	ready:true
 });
