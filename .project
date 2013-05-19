@@ -1,3 +1,16 @@
+<<<<<<< HEAD
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>jfo</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+	</buildSpec>
+	<natures>
+	</natures>
+</projectDescription>
+=======
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
 	<name>jfo</name>
@@ -15,3 +28,4 @@
 		<nature>com.aptana.projects.webnature</nature>
 	</natures>
 </projectDescription>
+>>>>>>> refs/heads/master
